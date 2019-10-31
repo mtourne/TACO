@@ -55,7 +55,8 @@ def extract_bboxes(mask):
             # No mask for this instance. Might happen due to
             # resizing or cropping. Set bbox to zeros
             x1, x2, y1, y2 = 0, 0, 0, 0
-        boxes[i] = np.array([y1, x1, y2, x2])
+        # XXX Changed the order to xmin, ymin, xmax, ymax
+        boxes[i] = np.array([x1, y1, x2, y2])
     return boxes.astype(np.int32)
 
 
@@ -197,8 +198,8 @@ def box_refinement_graph(box, gt_box):
 
     dy = (gt_center_y - center_y) / height
     dx = (gt_center_x - center_x) / width
-    dh = tf.log(gt_height / height)
-    dw = tf.log(gt_width / width)
+    dh = tf.math.log(gt_height / height)
+    dw = tf.math.log(gt_width / width)
 
     result = tf.stack([dy, dx, dh, dw], axis=1)
     return result

@@ -1,3 +1,12 @@
+# This fork
+
+* Added dataset_tfrecord.py which is meant to be fed to yolov3-tf2
+  -> seems to work but no augmentation and tiny dataset!
+
+* model.py -> model2.py automatic cleanups to update to tensorflow 2.0
+
+* utils.py tf2.0 + modification order of box coordinate to conform to yolov3-tf2
+
 <p align="center">
 <img src="https://raw.githubusercontent.com/wiki/pedropro/TACO/images/logonav.png" width="25%"/>
 </p>
