@@ -55,8 +55,7 @@ def extract_bboxes(mask):
             # No mask for this instance. Might happen due to
             # resizing or cropping. Set bbox to zeros
             x1, x2, y1, y2 = 0, 0, 0, 0
-        # XXX Changed the order to xmin, ymin, xmax, ymax
-        boxes[i] = np.array([x1, y1, x2, y2])
+        boxes[i] = np.array([y1, x1, y2, x2])
     return boxes.astype(np.int32)
 
 
@@ -797,7 +796,7 @@ def compute_ap_range(gt_box, gt_class_id, gt_mask,
     """Compute AP over a range or IoU thresholds. Default range is 0.5-0.95."""
     # Default is 0.5 to 0.95 with increments of 0.05
     iou_thresholds = iou_thresholds or np.arange(0.5, 1.0, 0.05)
-    
+
     # Compute AP over range of IoU thresholds
     AP = []
     for iou_threshold in iou_thresholds:

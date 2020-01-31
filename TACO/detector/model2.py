@@ -18,13 +18,15 @@ import multiprocessing
 import numpy as np
 import skimage.transform
 import tensorflow as tf
-import keras
-import keras.backend as K
-import keras.layers as KL
-import keras.engine as KE
-import keras.models as KM
+import tensorflow.keras as keras
+import tensorflow.keras.backend as K
+import tensorflow.keras.layers as KL
+import tensorflow.keras.models as KM
 import TACO.detector.utils as utils
 
+np.random.bit_generator = np.random._bit_generator
+
+# XXX (mtorurne): not true anymore
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
 assert LooseVersion(tf.__version__) >= LooseVersion("1.3")
@@ -69,7 +71,7 @@ class BatchNorm(KL.BatchNormalization):
 
 def compute_backbone_shapes(config, image_shape):
     """Computes the width and height of each stage of the backbone network.
-    
+
     Returns:
         [N, (height, width)]. Where N is the number of stages
     """
@@ -248,7 +250,7 @@ def clip_boxes_graph(boxes, window):
     return clipped
 
 
-class ProposalLayer(KE.Layer):
+class ProposalLayer(KL.Layer):
     """Receives anchor scores and selects a subset to pass as proposals
     to the second stage. Filtering is done based on anchor scores and
     non-max suppression to remove overlaps. It also applies bounding
@@ -337,7 +339,7 @@ def log2_graph(x):
     return tf.math.log(x) / tf.math.log(2.0)
 
 
-class PyramidROIAlign(KE.Layer):
+class PyramidROIAlign(KL.Layer):
     """Implements ROI Pooling on multiple levels of the feature pyramid.
 
     Params:
@@ -612,7 +614,7 @@ def detection_targets_graph(proposals, gt_class_ids, gt_boxes, gt_masks, config)
     return rois, roi_gt_class_ids, deltas, masks
 
 
-class DetectionTargetLayer(KE.Layer):
+class DetectionTargetLayer(KL.Layer):
     """Subsamples proposals and generates target box refinement, class_ids,
     and masks for each.
 
@@ -774,7 +776,7 @@ def refine_detections_graph(rois, probs, deltas, window, config):
     return detections
 
 
-class DetectionLayer(KE.Layer):
+class DetectionLayer(KL.Layer):
     """Takes classified proposal boxes and their bounding box deltas and
     returns the final detection boxes.
 
@@ -800,7 +802,7 @@ class DetectionLayer(KE.Layer):
         m = parse_image_meta_graph(image_meta)
         image_shape = m['image_shape'][0]
         window = norm_boxes_graph(m['window'], image_shape[:2])
-        
+
         # Run detection refinement graph on each item in the batch
         detections_batch = utils.batch_slice(
             [rois, mrcnn_class, mrcnn_bbox, window],
@@ -1268,6 +1270,28 @@ def load_image_gt(dataset, config, image_id, augmentation=None,
     image_meta = compose_image_meta(image_id, original_shape, image.shape,
                                     window, scale, active_class_ids)
 
+    return image, image_meta, class_ids, bbox, mask
+
+def load_image_for_yolo(*args, **kwargs):
+    '''
+    Same as load_image_gt but returns
+    xmin, ymin, xmax, ymax in float
+    instead of y1, x1, y2, x2 ints.
+    '''
+    image, image_meta, class_ids, bbox, mask = load_image_gt(*args, **kwargs)
+    # image_height, image_height = image.shape
+    image_height, image_width = image.shape[0], image.shape[1]
+    # switch from :
+    #   y1, x1, y2, x2 to
+    # to:
+    #   xmin, ymin, xmax, ymax
+    bbox = bbox[:, [1, 0, 3, 2]]
+    # convert to float
+    bbox = bbox.astype(float)
+    # div xmin, xmax columns by image_width
+    bbox[:, [0, 2]] /= image_width
+    # div ymin, ymax columns by image_height
+    bbox[:, [1, 3]] /= image_height
     return image, image_meta, class_ids, bbox, mask
 
 
@@ -2006,7 +2030,7 @@ class MaskRCNN():
                                      train_bn=config.TRAIN_BN)
 
             # Detections
-            # output is [batch, num_detections, (y1, x1, y2, x2, class_id, score)] in 
+            # output is [batch, num_detections, (y1, x1, y2, x2, class_id, score)] in
             # normalized coordinates
             detections = DetectionLayer(config, name="mrcnn_detection")(
                 [rpn_rois, mrcnn_class, mrcnn_bbox, input_image_meta])
